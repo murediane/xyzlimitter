@@ -1,21 +1,19 @@
-// Dummy data
-const clientData = [
-    { id: '1234567890-1', name: 'Client1', hasPaid: true, rqpersec: 10 },
-    { id: '1234567890-2', name: 'Client2', hasPaid: false, rqpersec: 10 },
-    { id: '1234567890-3', name: 'Client3', hasPaid: true, rqpersec: 10 },
-  ];
-  
-  // admin functions
-  const adminController = {
-    hasClientPaid: (clientId) => {
-      const client = clientData.find((client) => client.id == clientId);
-  
-      if (client) {
-        return { hasPaid: client.hasPaid };
+const adminController = {
+  hasClientPaid: async (clientId, redisClient) => {
+    try {
+      const clientPaymentDetails = JSON.parse(await redisClient.get(clientId));
+
+      if (clientPaymentDetails?.hasPaid === true) {
+        return true;
       } else {
-        console.log('Client not found');
+        return false;
       }
-    },
-  };
-  
-  module.exports = adminController;
+    } catch (error) {
+      console.error('Error checking if client has paid:', error);
+    }
+  },
+};
+
+module.exports = {
+    adminController,
+};

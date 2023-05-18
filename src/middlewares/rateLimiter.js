@@ -1,16 +1,11 @@
-const Redis = require("ioredis");
+const { adminController } = require('../controller/adminController')
 
-const client = new Redis({
-  host: process.env.REDIS_DATABASE_HOST,
-  port: process.env.REDIS_DATABASE_PORT,
-  password: process.env.REDIS_DATABASE_PASSWORD,
-});
+const LIMIT_PER_MIN = 2;
+const SYSTEM_LIMIT_PER_MIN = 100; // Adjust the system-wide limit as per your requirements
+const LIMIT_PER_MONTH = 200; // Adjust the monthly limit as per your requirements
 
-const LIMIT_PER_MIN = 10;
-const SYSTEM_LIMIT_PER_MIN = 10; // Adjust the system-wide limit as per your requirements
-const LIMIT_PER_MONTH = 2; // Adjust the monthly limit as per your requirements
-
-async function rate_limiter(req, res, next) {
+async function rateLimiter(req, res, next) {
+  const client = req.redisClient;
   const ip = req.ip;
   const clientId = req.headers["client-id"]; // Retrieve the client ID from request headers
 
@@ -70,6 +65,9 @@ async function rate_limiter(req, res, next) {
   const userKey = `client_rate_limit:${clientId}`;
   const user_data = await client.get(userKey);
 
+  //check if client has paid
+  const clientHasPaid = await adminController.hasClientPaid(clientId, client);
+
   if (!user_data) {
     client.set(
       userKey,
@@ -81,12 +79,12 @@ async function rate_limiter(req, res, next) {
     );
   } else {
     const clientRateLimit = JSON.parse(user_data);
-    if (clientRateLimit.per_minute_usage <= 0) {
+    if (clientRateLimit.per_minute_usage <= 0 && !clientHasPaid) {
       return res.status(429).json({
         message: `You have exceeded the limit of ${LIMIT_PER_MIN} requests per minute for client ${clientId}`,
       });
     }
-    if (clientRateLimit.monthly_usage <= 0) {
+    if (clientRateLimit.monthly_usage <= 0 && !clientHasPaid) {
       return res.status(429).json({
         message: `Monthly limit of ${LIMIT_PER_MONTH} requests reached`,
       });
@@ -117,5 +115,5 @@ async function rate_limiter(req, res, next) {
 }
 
 module.exports = {
-  rate_limiter,
+  rateLimiter,
 };
