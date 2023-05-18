@@ -1,5 +1,4 @@
 const Redis = require("ioredis");
-const lib = require("sails-mongo");
 
 const client = new Redis({
   host: process.env.REDIS_DATABASE_HOST,
@@ -116,8 +115,6 @@ async function rate_limiter(req, res, next) {
 
   return next();
 }
-
-function monthly_rate_limitter(clientId) {}
 
 module.exports = {
   rate_limiter,

@@ -5,7 +5,7 @@ const clientData = [
     { id: '1234567890-3', name: 'Client3', hasPaid: true, rqpersec: 10 },
   ];
   
-  // Standalone controller function
+  // admin functions
   const adminController = {
     hasClientPaid: (clientId) => {
       const client = clientData.find((client) => client.id == clientId);
