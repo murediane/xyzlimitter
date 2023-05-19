@@ -5,6 +5,7 @@ dotenv.config()
 const app = express();
 const PORT = process.env['PORT'] ?? 8000;
 const { rateLimiter } = require('./middlewares/rateLimiter')
+const { softRateLimiter } = require('./middlewares/softRateLimiter')
 const { paymentController } = require('./controller/paymentController')
 
 app.use(express.json());
@@ -22,9 +23,11 @@ app.use((req, res, next) => {
     next();
 });
 
-app.set('trust proxy', true)
 
-app.get('/',  rateLimiter, (_, res) => res.json({
+app.get('/soft',  softRateLimiter, (_, res) => res.json({
+    message: 'Request has been sent...'
+}));
+app.get('/hard',  rateLimiter, (_, res) => res.json({
     message: 'Request has been sent...'
 }));
 

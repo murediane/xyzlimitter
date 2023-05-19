@@ -1,10 +1,12 @@
-const { adminController } = require('../controller/adminController')
+const { adminController } = require("../controller/adminController");
 
 const LIMIT_PER_MIN = 2;
-const SYSTEM_LIMIT_PER_MIN = 10; // Adjust the system-wide limit as per your requirements
-const LIMIT_PER_MONTH = 5; // Adjust the monthly limit as per your requirements
+const SYSTEM_LIMIT_PER_MIN = 10; // Adjust the system-wide limit as per your wish
+const LIMIT_PER_MONTH = 5; // Adjust the monthly limit as per your you wish
 
-async function rateLimiter(req, res, next) {
+const SOFT_LIMIT_DELAY_MS = 60000; // Adjust the delay in milliseconds for the soft limit
+
+async function softRateLimiter(req, res, next) {
   const client = req.redisClient;
   const ip = req.ip;
   const clientId = req.headers["client-id"]; // Retrieve the client ID from request headers
@@ -28,12 +30,24 @@ async function rateLimiter(req, res, next) {
       })
     );
   } else {
+    const systemRateLimitData = JSON.parse(await client.get(systemKey));
     const systemRateLimit = JSON.parse(systemData);
+    const currentTime = new Date().getTime();
+  const timeDiff = currentTime - systemRateLimitData.timestamp;
+    const minutesPassed = Math.floor(timeDiff / 60000); // Number of minutes passed since last update
+    if (minutesPassed >= 1) {
+      // Reset system-wide limit every minute
+      systemRateLimit.timestamp = currentTime;
+      systemRateLimit.system_tokens_remaining = SYSTEM_LIMIT_PER_MIN;
+
+      client.set(systemKey, JSON.stringify({
+        timestamp: new Date().getTime(),
+        system_tokens_remaining: SYSTEM_LIMIT_PER_MIN,
+      }));
+    }
 
     if (systemRateLimit.system_tokens_remaining <= 0) {
-      return res.status(429).json({
-        message: `System-wide limit of ${SYSTEM_LIMIT_PER_MIN} requests per minute reached`,
-      });
+      await new Promise((resolve) => setTimeout(resolve, SOFT_LIMIT_DELAY_MS));
     }
   }
 
@@ -54,11 +68,15 @@ async function rateLimiter(req, res, next) {
 
     client.set(systemKey, JSON.stringify(systemRateLimitData));
   }
-
   if (systemRateLimitData.system_tokens_remaining <= 0) {
-    return res.status(429).json({
-      message: `System-wide limit of ${SYSTEM_LIMIT_PER_MIN} requests per minute reached`,
-    });
+
+    const updatedSystemRateLimitData = JSON.parse(await client.get(systemKey));
+
+    if (updatedSystemRateLimitData.system_tokens_remaining <= 0) {
+      return res.status(429).json({
+        message: `System-wide limit of ${SYSTEM_LIMIT_PER_MIN} requests per minute reached`,
+      });
+    }
   }
 
   // Check client-specific rate limit
@@ -115,5 +133,5 @@ async function rateLimiter(req, res, next) {
 }
 
 module.exports = {
-  rateLimiter,
+  softRateLimiter,
 };
