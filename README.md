@@ -20,11 +20,15 @@ The system is designed to solve these three issues:
 
 ## Routes
 `/` home route
+
 `/clientpay` route for client to upgrade 
 it  allow the client to bypass the throttling middleware by paying for more requests per second
+
 `/soft`/ use this endpoint to test soft throttling 
 it is used to test soft throttling middleware wait for one minute the request should go through
+
 `/hard`/ use this endpoint  to test hard throttling 
+
 it is used to test hard throttling middleware it rejects the system if the maximum requests is reached
 
  the limit variables are  hard coded in minutes for testing purposed , you may adjust it depending on the limit you need 
